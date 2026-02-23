@@ -45,17 +45,17 @@ Refactor → 重构代码，保持测试全绿
 
 | ID | 任务 | 验收标准 |
 |----|------|----------|
-| S0-1 | 初始化项目结构 | `src/racing_coach/` 包结构存在；`pyproject.toml` 配置完成；`pytest` 可运行空测试套件并返回 exit code 0 |
-| S0-2 | 配置开发工具链 | `ruff`（lint）+ `pytest` + `pytest-cov` 已集成；运行 `pytest --cov` 可输出覆盖率报告 |
-| S0-3 | 初始化 Git 仓库与分支策略 | `main` 分支存在且受保护；`.gitignore` 包含 Python/IDE/SQLite 常见忽略项 |
-| S0-4 | 建立 CI 流水线 | GitHub Actions（或本地 pre-commit hook）：每次提交自动运行 lint + test；任一失败则阻止合并 |
+| S0-1 | ~~初始化项目结构~~ | ~~`src/racing_coach/` 包结构存在；`pyproject.toml` 配置完成；`pytest` 可运行空测试套件并返回 exit code 0~~ |
+| S0-2 | ~~配置开发工具链~~ | ~~`ruff`（lint）+ `pytest` + `pytest-cov` 已集成；运行 `pytest --cov` 可输出覆盖率报告~~ |
+| S0-3 | ~~初始化 Git 仓库与分支策略~~ | ~~`main` 分支存在且受保护；`.gitignore` 包含 Python/IDE/SQLite 常见忽略项~~ |
+| S0-4 | ~~建立 CI 流水线~~ | ~~GitHub Actions（或本地 pre-commit hook）：每次提交自动运行 lint + test；任一失败则阻止合并~~ |
 
 ### 验收检查点
 
 ```
-[ ] 在空项目中运行 `pytest` → 0 errors, 0 failures
-[ ] 在空项目中运行 `ruff check .` → 0 violations
-[ ] 提交一个故意失败的测试 → CI/hook 报红
+[x] 在空项目中运行 `pytest` → 0 errors, 0 failures          ✅ 2026-02-23
+[x] 在空项目中运行 `ruff check .` → 0 violations             ✅ 2026-02-23
+[x] 提交一个故意失败的测试 → CI/hook 报红                      ✅ 2026-02-23 (pre-commit hook)
 ```
 
 ---

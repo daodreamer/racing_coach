@@ -42,6 +42,11 @@ tests/
   reporting/
 ```
 
+## Sprint Tracking
+- When a sprint's tasks and acceptance criteria are all met, update `SPRINT_PLAN.md`:
+  - Strike through completed task rows (use `~~text~~`)
+  - Check off acceptance checkpoints (`[x]`) and add completion date
+
 ## Key Architecture Decisions
 - Dual-path architecture: hot path (local, low-latency) + warm path (LLM-powered analysis)
 - MVP focuses on warm path only (post-race analysis)
