@@ -35,7 +35,7 @@ from racing_coach.track.detector import CornerDetector
 def _load_frames(storage: TelemetryStorage, session_id: str, lap: int) -> list[LapFrame]:
     rows = storage.get_lap(session_id, lap)
     if not rows:
-        print(f"  ⚠ 未找到数据：session={session_id!r}, lap={lap}", file=sys.stderr)
+        print(f"  [!] 未找到数据：session={session_id!r}, lap={lap}", file=sys.stderr)
         sys.exit(1)
     return [LapFrame.from_storage_dict(r) for r in rows]
 
@@ -82,7 +82,7 @@ def main() -> None:
 
     if not user_pts or not ref_pts:
         print(
-            "  ⚠ 未找到位置数据（carX/carZ）。\n"
+            "  [!] 未找到位置数据（carX/carZ）。\n"
             "    请确认录制时车辆在赛道上，且 ACC 返回了有效世界坐标。",
             file=sys.stderr,
         )
@@ -93,7 +93,7 @@ def main() -> None:
     print(f"     检测到 {len(corners)} 个弯道")
 
     if not corners:
-        print("  ⚠ 未检测到弯道，无法进行逐弯分析。", file=sys.stderr)
+        print("  [!] 未检测到弯道，无法进行逐弯分析。", file=sys.stderr)
         sys.exit(1)
 
     storage.close()
@@ -139,7 +139,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     print(f"6/6  写出报告 → {args.output}")
     MarkdownFormatter().write(report, args.output)
-    print(f"\n✓ 完成：{args.output}")
+    print(f"\n[OK] 完成：{args.output}")
 
 
 if __name__ == "__main__":

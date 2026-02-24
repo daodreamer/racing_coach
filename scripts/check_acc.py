@@ -15,7 +15,7 @@ from racing_coach.telemetry.acc_reader import ACCLiveConnection
 
 
 def on_state_change(connected: bool) -> None:
-    status = "已连接 ✓" if connected else "已断开 ✗"
+    status = "已连接 [OK]" if connected else "已断开 [--]"
     print(f"\n[连接状态变化] → {status}\n")
 
 
@@ -28,7 +28,7 @@ def main() -> None:
     print("正在尝试连接 ACC 共享内存...")
     if not conn.connect():
         print(
-            "× 连接失败：ACC 未运行，或不在 Windows 上。\n"
+            "[FAIL] 连接失败：ACC 未运行，或不在 Windows 上。\n"
             "  请先启动 ACC 并进入会话，然后重新运行本脚本。"
         )
         return

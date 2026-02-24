@@ -40,11 +40,11 @@ def main() -> None:
     print("Connecting to ACC...")
 
     if not conn.connect():
-        print("\n× 连接失败：ACC 未运行，或车辆不在赛道上。")
+        print("\n[FAIL] 连接失败：ACC 未运行，或车辆不在赛道上。")
         storage.close()
         return
 
-    print("✓ 已连接。Ctrl+C 停止录制。\n")
+    print("[OK] 已连接。Ctrl+C 停止录制。\n")
     print(f"{'圈号':>4}  {'帧数':>6}  {'圈时(s)':>8}  {'速度km/h':>10}  坐标(X, Z)")
     print("-" * 60)
 
