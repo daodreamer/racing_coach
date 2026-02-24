@@ -1,7 +1,7 @@
 # AI Racing Coach — Project Conventions
 
 ## Project Overview
-AI-powered racing coach for iRacing. Analyzes telemetry data (live or from .ibt files) and provides driving feedback via LLM-generated reports. MVP scope: post-race analysis only (no real-time voice coaching).
+AI-powered racing coach for ACC (Assetto Corsa Competizione). Analyzes telemetry data (live via shared memory) and provides driving feedback via LLM-generated reports. MVP scope: post-race analysis only (no real-time voice coaching).
 
 ## Tech Stack
 - **Language**: Python 3.11+
@@ -9,7 +9,7 @@ AI-powered racing coach for iRacing. Analyzes telemetry data (live or from .ibt 
 - **Testing**: pytest + pytest-cov + pytest-benchmark
 - **Linting/Formatting**: ruff
 - **Database**: SQLite (stdlib sqlite3)
-- **Telemetry SDK**: pyirsdk (iRacing only for MVP)
+- **Telemetry SDK**: ctypes + mmap (ACC shared memory, Windows stdlib only)
 
 ## Development Workflow
 - **TDD**: Red → Green → Refactor. Write failing tests first.
@@ -30,7 +30,7 @@ AI-powered racing coach for iRacing. Analyzes telemetry data (live or from .ibt 
 ```
 src/racing_coach/
   __init__.py          # Package root
-  telemetry/           # Sprint 1: iRacing data acquisition
+  telemetry/           # Sprint 1: ACC data acquisition
   track/               # Sprint 2: track modeling & corner detection
   analysis/            # Sprint 3: reference lap comparison & error detection
   reporting/           # Sprint 4: LLM feedback generation
@@ -50,5 +50,5 @@ tests/
 ## Key Architecture Decisions
 - Dual-path architecture: hot path (local, low-latency) + warm path (LLM-powered analysis)
 - MVP focuses on warm path only (post-race analysis)
-- iRacing-only for MVP; multi-sim support deferred
+- ACC-only for MVP; multi-sim support deferred
 - SQLite for all persistence (zero-deployment)
