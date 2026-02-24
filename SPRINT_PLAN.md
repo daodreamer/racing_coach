@@ -289,15 +289,15 @@ Refactor → 重构代码，保持测试全绿
 |----------|----------|
 | ~~报告包含：总结概要（1-2句）、逐弯详细分析、优先改进建议（Top 3）~~ | ~~单元测试：断言报告输出包含必要段落标题~~ |
 | ~~报告可导出为 Markdown 格式文件~~ | ~~单元测试：输出文件是合法的 Markdown（标题、列表结构完整）~~ |
-| 端到端流程：`ACC 录制会话数据 → 分析 → 报告` 可在单条命令中完成 | 集成测试：给定测试录制数据，运行 CLI 命令，断言输出报告文件存在且非空 |
+| ~~端到端流程：`ACC 录制会话数据 → 分析 → 报告` 可在单条命令中完成~~ | ~~集成测试：给定测试录制数据，运行 CLI 命令，断言输出报告文件存在且非空~~ |
 
 ### Sprint 4 验收检查点
 
 ```
-[ ] 输入一段 ACC 录制数据 → 运行一条命令 → 生成 Markdown 分析报告 (S4-US4 e2e，Sprint 5 pipeline)
+[x] 输入一段 ACC 录制数据 → 运行一条命令 → 生成 Markdown 分析报告   ✅ 2026-02-24 (scripts/record_session.py + scripts/analyze_session.py，kimi-k2.5 LLM 成功生成逐弯中文建议，9弯 +0.762s Delta)
 [x] 报告中的建议与实际数据一致（无 LLM 幻觉的明显痕迹）                ✅ 2026-02-23 (anti-hallucination prompt + rule fallback)
 [x] LLM 不可用时，fallback 报告仍可生成                                ✅ 2026-02-23 (fallback_suggestions + summary)
-[x] pytest 全绿，覆盖率 ≥ 80%                                         ✅ 2026-02-23 (179 tests, 97% coverage)
+[x] pytest 全绿，覆盖率 ≥ 80%                                         ✅ 2026-02-24 (179 tests, 93% coverage)
 ```
 
 ---
@@ -468,7 +468,7 @@ Sprint 7  TTS 与 Overlay    ──┘── Phase 3: 实时 AI 教练
 
 ```
               ┌─────────┐
-              │  E2E    │  ← 少量：.ibt → 报告端到端
+              │  E2E    │  ← 少量：ACC 录制 → 报告端到端
              ─┼─────────┼─
             │ Integration │ ← 中量：API、DB、LLM mock
            ─┼─────────────┼─
@@ -493,6 +493,6 @@ Sprint 7  TTS 与 Overlay    ──┘── Phase 3: 实时 AI 教练
 | 遥测 SDK | ctypes + mmap（stdlib） | ACC Windows 具名共享内存，无第三方依赖 |
 | Web 框架 | FastAPI + Uvicorn | 轻量高性能 |
 | 前端 | HTMX + Chart.js（或纯 Jinja2 模板） | 极简前端，避免 SPA 复杂度 |
-| LLM | OpenAI API（GPT-4o）或 Anthropic API（Claude） | 可切换，统一接口抽象 |
+| LLM | Moonshot AI Kimi k2.5（`api.moonshot.ai`，国际版） | API Key 通过 `MOONSHOT_API_KEY` 环境变量注入；OpenAI 兼容接口 |
 | TTS | pyttsx3（本地）/ ElevenLabs（云端） | Sprint 7 引入 |
 | Overlay | PyQt6 / tkinter（透明窗口） | Sprint 7 引入 |
