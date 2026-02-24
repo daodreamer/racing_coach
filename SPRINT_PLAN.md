@@ -62,18 +62,18 @@ Refactor → 重构代码，保持测试全绿
 
 ## Sprint 1 — 遥测数据采集（Phase 0）
 
-**Sprint 目标**：打通从 iRacing 读取遥测数据的完整管道，能够以 ≥ 60Hz 采集核心参数并持久化存储。
+**Sprint 目标**：打通从 ACC（Assetto Corsa Competizione）读取遥测数据的完整管道，能够以 ≥ 60Hz 采集核心参数并持久化存储。
 
 ### User Stories
 
 #### ~~S1-US1：遥测连接与心跳~~
 
-> 作为开发者，我需要连接 iRacing 共享内存并检测模拟器运行状态，以便确认数据源可用。
+> 作为开发者，我需要连接 ACC 共享内存并检测模拟器运行状态，以便确认数据源可用。
 
 | 验收标准 | 测试方法 |
 |----------|----------|
-| ~~当 iRacing 运行时，连接函数返回 `True`~~ | ~~单元测试：mock 共享内存，断言连接状态~~ |
-| ~~当 iRacing 未运行时，连接函数返回 `False` 且不抛异常~~ | ~~单元测试：mock 空内存，断言优雅降级~~ |
+| ~~当 ACC 运行时，连接函数返回 `True`~~ | ~~单元测试：mock 共享内存，断言连接状态~~ |
+| ~~当 ACC 未运行时，连接函数返回 `False` 且不抛异常~~ | ~~单元测试：mock 空内存，断言优雅降级~~ |
 | ~~连接状态变化时触发回调通知~~ | ~~单元测试：注册回调，模拟连接/断开，断言回调被调用~~ |
 
 #### ~~S1-US2：核心参数解析~~
@@ -88,7 +88,7 @@ Refactor → 重构代码，保持测试全绿
 | 油门位置 | `throttle` | 0.0 ~ 1.0 | [0, 1] |
 | 刹车位置 | `brake` | 0.0 ~ 1.0 | [0, 1] |
 | 转向角 | `steering_angle` | radians | [-π, π] |
-| 挡位 | `gear` | int | [-1, 8]（-1=倒挡, 0=空挡） |
+| 挡位 | `gear` | int | [-1, 7]（-1=倒挡, 0=空挡） |
 | RPM | `rpm` | rev/min | ≥ 0 |
 | 纵向G力 | `g_force_lon` | g | 实数 |
 | 横向G力 | `g_force_lat` | g | 实数 |
@@ -112,22 +112,19 @@ Refactor → 重构代码，保持测试全绿
 | ~~支持按 `session_id + lap_number` 查询完整单圈数据~~ | ~~单元测试：写入多圈，查询指定圈，断言数据隔离正确~~ |
 | ~~数据库文件 < 50MB / 100圈（iRacing 60Hz 标准采样）~~ | ~~集成测试：生成 100 圈模拟数据写入，检查文件大小~~ |
 
-#### ~~S1-US4：.ibt 文件导入（离线模式）~~
+#### ~~S1-US4：.ibt 文件导入（已移除）~~
 
-> 作为用户，即使不实时连接 iRacing，我也能导入 .ibt 遥测文件进行分析。
+> ~~作为用户，即使不实时连接模拟器，我也能导入遥测文件进行分析。~~
 
-| 验收标准 | 测试方法 |
-|----------|----------|
-| ~~给定一个 .ibt 文件，解析出与实时模式相同结构的数据~~ | ~~单元测试：用已知 .ibt 文件，断言输出结构与 S1-US2 一致~~ |
-| ~~无效或损坏的 .ibt 文件返回明确错误而非崩溃~~ | ~~单元测试：给定截断文件、空文件、非 .ibt 文件~~ |
+**⚠️ 2026-02-24 移除**：此 Story 基于 iRacing .ibt 文件格式设计。迁移至 ACC 后，遥测通道改为 Windows 具名共享内存（`Local\acpmf_physics` / `Local\acpmf_graphics`），ACC 不提供 .ibt 格式。数据持久化通过 Sprint 1-US3 的 SQLite 录制实现，离线分析读取数据库而非文件。
 
 ### Sprint 1 验收检查点
 
 ```
-[x] 运行采集脚本 → 控制台实时打印速度、踏板、转向等参数（人工验证）  ✅ 2026-02-23 (LiveTelemetryConnection + TelemetryParser)
+[x] 运行采集脚本 → 控制台实时打印速度、踏板、转向等参数（人工验证）  ✅ 2026-02-24 (ACCLiveConnection + ACCParser + scripts/check_acc.py)
 [x] 跑完一段 Session → SQLite 中有完整的逐帧数据                      ✅ 2026-02-23 (TelemetryStorage)
-[x] 导入一个 .ibt 文件 → 输出与实时采集结构一致                        ✅ 2026-02-23 (IBTReader)
-[x] pytest 全绿，覆盖率 ≥ 80%                                         ✅ 2026-02-23 (53 tests, 97% coverage)
+[x] ACC 真实数据验证：G值、速度、踏板数值与赛道行为一致               ✅ 2026-02-24 (实车测试通过)
+[x] pytest 全绿，覆盖率 ≥ 80%                                         ✅ 2026-02-24 (173 tests, 93% coverage)
 ```
 
 ---
@@ -292,12 +289,12 @@ Refactor → 重构代码，保持测试全绿
 |----------|----------|
 | ~~报告包含：总结概要（1-2句）、逐弯详细分析、优先改进建议（Top 3）~~ | ~~单元测试：断言报告输出包含必要段落标题~~ |
 | ~~报告可导出为 Markdown 格式文件~~ | ~~单元测试：输出文件是合法的 Markdown（标题、列表结构完整）~~ |
-| 端到端流程：`.ibt 文件 → 分析 → 报告` 可在单条命令中完成 | 集成测试：给定测试 .ibt 文件，运行 CLI 命令，断言输出报告文件存在且非空 |
+| 端到端流程：`ACC 录制会话数据 → 分析 → 报告` 可在单条命令中完成 | 集成测试：给定测试录制数据，运行 CLI 命令，断言输出报告文件存在且非空 |
 
 ### Sprint 4 验收检查点
 
 ```
-[ ] 输入一个 .ibt 文件 → 运行一条命令 → 生成 Markdown 分析报告 (S4-US4 e2e，Sprint 5 pipeline)
+[ ] 输入一段 ACC 录制数据 → 运行一条命令 → 生成 Markdown 分析报告 (S4-US4 e2e，Sprint 5 pipeline)
 [x] 报告中的建议与实际数据一致（无 LLM 幻觉的明显痕迹）                ✅ 2026-02-23 (anti-hallucination prompt + rule fallback)
 [x] LLM 不可用时，fallback 报告仍可生成                                ✅ 2026-02-23 (fallback_suggestions + summary)
 [x] pytest 全绿，覆盖率 ≥ 80%                                         ✅ 2026-02-23 (179 tests, 97% coverage)
@@ -318,7 +315,7 @@ Refactor → 重构代码，保持测试全绿
 | 验收标准 | 测试方法 |
 |----------|----------|
 | FastAPI 应用启动后，`GET /health` 返回 `200 OK` | 集成测试：`TestClient` 请求，断言状态码 |
-| `POST /api/analyze` 接受 .ibt 文件上传，返回分析报告 JSON | 集成测试：上传测试文件，断言响应包含 `corners` 和 `suggestions` 字段 |
+| `POST /api/analyze` 接受 ACC 录制数据上传，返回分析报告 JSON | 集成测试：上传测试数据，断言响应包含 `corners` 和 `suggestions` 字段 |
 | `GET /api/laps?track=xxx&car=xxx` 返回历史圈速列表 | 集成测试：预置测试数据后请求，断言返回列表长度正确 |
 
 #### S5-US2：分析报告页面
@@ -344,7 +341,7 @@ Refactor → 重构代码，保持测试全绿
 ### Sprint 5 验收检查点
 
 ```
-[ ] 浏览器打开 Web UI → 上传 .ibt 文件 → 看到完整的可视化分析报告
+[ ] 浏览器打开 Web UI → 上传 ACC 录制数据 → 看到完整的可视化分析报告
 [ ] 历史趋势页面展示多圈的进步轨迹
 [ ] 所有 API 端点有对应的集成测试且全绿
 [ ] pytest 全绿，覆盖率 ≥ 70%（前端组件测试可降低要求）
@@ -391,7 +388,7 @@ Refactor → 重构代码，保持测试全绿
 ### Sprint 6 验收检查点
 
 ```
-[ ] iRacing 中驾驶 → 接近弯道时听到刹车点提示音（人工验证）
+[ ] ACC 中驾驶 → 接近弯道时听到刹车点提示音（人工验证）
 [ ] 刹车抱死时听到警报音（人工验证）
 [ ] 端到端延迟 < 100ms（工具测量）
 [ ] pytest 全绿，覆盖率 ≥ 80%
@@ -440,7 +437,7 @@ Refactor → 重构代码，保持测试全绿
 ### Sprint 7 验收检查点
 
 ```
-[ ] iRacing 中驾驶 → 过弯后听到语音评语（人工验证）
+[ ] ACC 中驾驶 → 过弯后听到语音评语（人工验证）
 [ ] Overlay 显示实时 Delta 和踏板对比（人工验证）
 [ ] 高密度弯道路段不出现语音堆积（人工验证）
 [ ] 语音不可用时系统仍正常运行（降级测试）
@@ -465,7 +462,7 @@ Sprint 6  实时热路径         ──┤
 Sprint 7  TTS 与 Overlay    ──┘── Phase 3: 实时 AI 教练
 ```
 
-**关键里程碑**：Sprint 5 完成后即为**可交付的 MVP**。此时用户可以上传 .ibt 文件获取 AI 分析报告。Sprint 6-7 为增强功能，需在 MVP 验证核心价值后再启动。
+**关键里程碑**：Sprint 5 完成后即为**可交付的 MVP**。此时用户可以上传 ACC 录制的遥测数据获取 AI 分析报告。Sprint 6-7 为增强功能，需在 MVP 验证核心价值后再启动。
 
 ## 附录 B：测试金字塔目标
 
@@ -493,7 +490,7 @@ Sprint 7  TTS 与 Overlay    ──┘── Phase 3: 实时 AI 教练
 | 测试 | pytest + pytest-cov + pytest-benchmark | TDD 核心工具 |
 | Lint | ruff | 替代 flake8 + isort + black |
 | 数据库 | SQLite | 零部署，`sqlite3` 标准库 |
-| 遥测 SDK | pyirsdk | iRacing 共享内存读取 |
+| 遥测 SDK | ctypes + mmap（stdlib） | ACC Windows 具名共享内存，无第三方依赖 |
 | Web 框架 | FastAPI + Uvicorn | 轻量高性能 |
 | 前端 | HTMX + Chart.js（或纯 Jinja2 模板） | 极简前端，避免 SPA 复杂度 |
 | LLM | OpenAI API（GPT-4o）或 Anthropic API（Claude） | 可切换，统一接口抽象 |
