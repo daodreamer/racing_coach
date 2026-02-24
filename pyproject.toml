@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "openai>=2.22.0",
     "pyirsdk>=1.3.5",
 ]
 
@@ -51,6 +52,11 @@ select = [
     "B",    # flake8-bugbear
     "SIM",  # flake8-simplify
     "RUF",  # ruff-specific rules
+]
+ignore = [
+    "RUF001",  # fullwidth Chinese punctuation is intentional in user-facing strings
+    "RUF002",  # same — Chinese docstring punctuation
+    "RUF003",  # same — Chinese comment punctuation
 ]
 
 [tool.ruff.lint.isort]
