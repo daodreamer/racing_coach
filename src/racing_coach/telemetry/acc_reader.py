@@ -28,6 +28,13 @@ _GRAP_SIZE = 2276  # safe upper bound for SPageFileGraphics
 _OFF_COMPLETED_LAPS = 132   # int32
 _OFF_CURRENT_TIME_MS = 140  # int32 (ms)
 _OFF_LAP_POS = 248          # float [0, 1]
+_OFF_ACTIVE_CARS = 252      # int32 — number of cars on track
+_OFF_CAR_COORDS = 256       # float[60][3] — world XYZ for each car slot (720 bytes)
+_OFF_PLAYER_CAR_ID = 1216   # int32 — index into carCoordinates[] for the player's car
+
+# SPageFileGraphics carCoordinates layout: [x, y_altitude, z] per car
+# Top-down 2D map uses [0] (X east-west) and [2] (Z north-south).
+_CAR_COORD_STRIDE = 12  # 3 floats × 4 bytes
 
 _FILE_MAP_READ = 0x0004
 
@@ -136,10 +143,17 @@ class ACCSharedMemory:
         buf = _read_shared_memory(_GRAP_MAP_NAME, _GRAP_SIZE)
         if buf is None:
             return {}
+        # Read player car index and clamp to valid range [0, 59].
+        player_id = max(0, min(59, _read_int(buf, _OFF_PLAYER_CAR_ID)))
+        coord_base = _OFF_CAR_COORDS + player_id * _CAR_COORD_STRIDE
+
         return {
             "completedLaps": _read_int(buf, _OFF_COMPLETED_LAPS),
             "iCurrentTime": _read_int(buf, _OFF_CURRENT_TIME_MS),
             "normalizedCarPosition": _read_float(buf, _OFF_LAP_POS),
+            # World coordinates: carCoordinates[player_id] = [X, Y_alt, Z]
+            "carX": _read_float(buf, coord_base),
+            "carZ": _read_float(buf, coord_base + 8),
         }
 
     def close(self) -> None:

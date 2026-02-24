@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, call
 
+import pytest
+
 from racing_coach.telemetry.acc_reader import ACCLiveConnection
 
 _PHYSICS_SAMPLE = {
@@ -20,6 +22,8 @@ _GRAPHICS_SAMPLE = {
     "completedLaps": 3,
     "iCurrentTime": 42500,
     "normalizedCarPosition": 0.45,
+    "carX": 312.5,
+    "carZ": -87.3,
 }
 
 
@@ -145,6 +149,17 @@ def test_read_frame_returns_dict_when_connected():
     conn.connect()
     frame = conn.read_frame()
     assert isinstance(frame, dict)
+
+
+def test_read_frame_contains_car_coordinates():
+    conn = ACCLiveConnection(reader=make_reader(available=True))
+    conn.connect()
+    frame = conn.read_frame()
+    assert frame is not None
+    assert "carX" in frame
+    assert "carZ" in frame
+    assert frame["carX"] == pytest.approx(_GRAPHICS_SAMPLE["carX"])
+    assert frame["carZ"] == pytest.approx(_GRAPHICS_SAMPLE["carZ"])
 
 
 def test_disconnect_calls_reader_close():

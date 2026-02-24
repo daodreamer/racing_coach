@@ -8,6 +8,9 @@ Schema design notes:
   - ``throttle``, ``brake``, ``lap_dist_pct`` stored as scaled INTEGER x 10 000:
     values 0-10 000 fit in 2 bytes vs 8 bytes for REAL.  Precision is 0.0001
     which exceeds sensor resolution.
+  - ``positions`` is a separate table for world coordinates (used for track
+    geometry / corner detection only); kept separate so the main
+    ``telemetry_frames`` table stays compact.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from __future__ import annotations
 import sqlite3
 
 from racing_coach.telemetry.models import TelemetryFrame
+from racing_coach.track.models import TrackPoint
 
 _SCALE = 10_000  # scaling factor for bounded [0,1] floats
 
@@ -46,6 +50,17 @@ CREATE TABLE IF NOT EXISTS telemetry_frames (
 
 CREATE INDEX IF NOT EXISTS idx_session_lap
     ON telemetry_frames (session_idx, lap_number);
+
+CREATE TABLE IF NOT EXISTS positions (
+    session_idx  INTEGER NOT NULL,
+    lap_number   INTEGER NOT NULL,
+    lap_dist_pct REAL    NOT NULL,
+    car_x        REAL    NOT NULL,
+    car_y        REAL    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_positions_session_lap
+    ON positions (session_idx, lap_number);
 """
 
 _INSERT_SESSION = "INSERT OR IGNORE INTO sessions (session_id) VALUES (?)"
@@ -57,6 +72,19 @@ INSERT INTO telemetry_frames (
     speed, throttle, brake, steering_angle, gear, rpm,
     g_force_lon, g_force_lat, lap_dist_pct, lap_time
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+
+_INSERT_POSITION = """
+INSERT INTO positions (session_idx, lap_number, lap_dist_pct, car_x, car_y)
+VALUES (?, ?, ?, ?, ?)
+"""
+
+_SELECT_TRACK_POINTS = """
+SELECT lap_dist_pct, car_x, car_y
+FROM   positions
+WHERE  session_idx = (SELECT idx FROM sessions WHERE session_id = ?)
+  AND  lap_number  = ?
+ORDER  BY lap_dist_pct
 """
 
 _SELECT_LAP = """
@@ -99,6 +127,7 @@ class TelemetryStorage:
         self._conn.commit()
         self._session_cache: dict[str, int] = {}
         self._batch: list[tuple] = []
+        self._pos_batch: list[tuple] = []
         self._batch_size = 600  # flush every ~10 seconds at 60 Hz
 
     # ------------------------------------------------------------------
@@ -130,6 +159,43 @@ class TelemetryStorage:
         ))
         if len(self._batch) >= self._batch_size:
             self._flush()
+
+    def save_position(
+        self,
+        session_id: str,
+        lap_number: int,
+        lap_dist_pct: float,
+        x: float,
+        y: float,
+    ) -> None:
+        """Persist one world-coordinate sample.  Writes are batched with frames."""
+        self._pos_batch.append((
+            self._session_idx(session_id),
+            lap_number,
+            lap_dist_pct,
+            x,
+            y,
+        ))
+        if len(self._pos_batch) >= self._batch_size:
+            self._flush()
+
+    def get_lap_as_track_points(
+        self, session_id: str, lap_number: int
+    ) -> list[TrackPoint]:
+        """Return all saved positions for *session_id* / *lap_number* as :class:`TrackPoint`.
+
+        Points are ordered by ``lap_dist_pct``.
+        """
+        self._flush()
+        cursor = self._conn.execute(_SELECT_TRACK_POINTS, (session_id, lap_number))
+        return [
+            TrackPoint(
+                lap_dist_pct=float(row["lap_dist_pct"]),
+                x=float(row["car_x"]),
+                y=float(row["car_y"]),
+            )
+            for row in cursor.fetchall()
+        ]
 
     def get_lap(self, session_id: str, lap_number: int) -> list[dict]:
         """Return all frames for *session_id* / *lap_number*, ordered by timestamp."""
@@ -169,3 +235,7 @@ class TelemetryStorage:
             self._conn.executemany(_INSERT_FRAME, self._batch)
             self._conn.commit()
             self._batch.clear()
+        if self._pos_batch:
+            self._conn.executemany(_INSERT_POSITION, self._pos_batch)
+            self._conn.commit()
+            self._pos_batch.clear()

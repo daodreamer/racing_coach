@@ -9,6 +9,7 @@ import pytest
 
 from racing_coach.telemetry.models import TelemetryFrame
 from racing_coach.telemetry.storage import TelemetryStorage
+from racing_coach.track.models import TrackPoint
 
 
 def make_frame(**overrides) -> TelemetryFrame:
@@ -88,6 +89,53 @@ def test_get_lap_returns_empty_for_missing(storage):
 # ---------------------------------------------------------------------------
 # S1-US3 AC3: file size < 50MB for 100 laps x 60s x 60Hz
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Positions table: save_position / get_lap_as_track_points
+# ---------------------------------------------------------------------------
+
+
+def test_save_position_and_get_lap_as_track_points(storage):
+    """Round-trip: save positions, retrieve as TrackPoints."""
+    for i in range(10):
+        pct = i / 10.0
+        storage.save_position("sess", 1, pct, x=float(i * 10), y=float(i * 5))
+
+    points = storage.get_lap_as_track_points("sess", 1)
+    assert len(points) == 10
+    assert all(isinstance(p, TrackPoint) for p in points)
+
+
+def test_get_lap_as_track_points_values(storage):
+    storage.save_position("sess", 1, 0.5, x=123.4, y=-56.7)
+    points = storage.get_lap_as_track_points("sess", 1)
+    assert points[0].lap_dist_pct == pytest.approx(0.5)
+    assert points[0].x == pytest.approx(123.4)
+    assert points[0].y == pytest.approx(-56.7)
+
+
+def test_get_lap_as_track_points_empty_for_missing(storage):
+    assert storage.get_lap_as_track_points("no_such", 99) == []
+
+
+def test_positions_ordered_by_lap_dist_pct(storage):
+    """Points should come back sorted by lap_dist_pct."""
+    for pct in [0.9, 0.1, 0.5, 0.3]:
+        storage.save_position("sess", 1, pct, x=pct * 100, y=0.0)
+    points = storage.get_lap_as_track_points("sess", 1)
+    pcts = [p.lap_dist_pct for p in points]
+    assert pcts == sorted(pcts)
+
+
+def test_positions_isolated_by_session_and_lap(storage):
+    storage.save_position("sessA", 1, 0.1, 10.0, 0.0)
+    storage.save_position("sessA", 2, 0.1, 20.0, 0.0)
+    storage.save_position("sessB", 1, 0.1, 30.0, 0.0)
+
+    assert len(storage.get_lap_as_track_points("sessA", 1)) == 1
+    assert len(storage.get_lap_as_track_points("sessA", 2)) == 1
+    assert storage.get_lap_as_track_points("sessA", 1)[0].x == pytest.approx(10.0)
+
 
 def test_file_size_under_50mb_for_100_laps(tmp_path):
     db_file = str(tmp_path / "big_test.db")
