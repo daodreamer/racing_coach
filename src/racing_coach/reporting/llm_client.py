@@ -115,14 +115,14 @@ class MoonshotClient:
         timeout: Request timeout in seconds.
     """
 
-    BASE_URL = "https://api.moonshot.cn/v1"
-    DEFAULT_MODEL = "kimi-k2"
+    BASE_URL = "https://api.moonshot.ai/v1"
+    DEFAULT_MODEL = "kimi-k2.5"
 
     def __init__(
         self,
         api_key: str | None = None,
         model: str = DEFAULT_MODEL,
-        timeout: float = 30.0,
+        timeout: float = 120.0,
     ) -> None:
         key = api_key or os.environ.get("MOONSHOT_API_KEY", "")
         self._client = OpenAI(api_key=key, base_url=self.BASE_URL, timeout=timeout)
