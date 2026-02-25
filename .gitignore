@@ -50,3 +50,6 @@ uv.lock
 
 # Local history
 .history/
+.env
+session.*
+lap_report.md
