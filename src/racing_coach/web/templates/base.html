@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Racing Coach{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+    // Apply global Chart.js defaults to match the terminal aesthetic
+    document.addEventListener('DOMContentLoaded', function() {
+        Chart.defaults.font.family  = "'IBM Plex Mono', monospace";
+        Chart.defaults.font.size    = 11;
+        Chart.defaults.color        = '#5c5c74';
+        Chart.defaults.borderColor  = '#1c1c28';
+    });
+    </script>
+</head>
+<body>
+    <header>
+        <a href="/" class="logo">
+            <span class="logo-flag">&#9654;</span>
+            <span class="logo-text">RACING<em>COACH</em></span>
+        </a>
+        <div class="header-sep"></div>
+        <nav>
+            <a href="/progress">Progress</a>
+            <a href="/health">System</a>
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

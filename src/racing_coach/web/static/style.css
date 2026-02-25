@@ -1,0 +1,508 @@
+/* ═══════════════════════════════════════════════════════════════
+   AI Racing Coach — Motorsport Data Terminal UI
+   Fonts : Rajdhani (display) + IBM Plex Mono (data)
+   Accent: #FF4713 (racing orange)
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+/* ── Variables ─────────────────────────────────────────────── */
+:root {
+    --bg:         #070709;
+    --surface:    #0c0c11;
+    --surface-2:  #111118;
+    --border:     #1c1c28;
+    --border-hi:  #2c2c3c;
+    --text:       #d8d8e8;
+    --muted:      #5c5c74;
+    --dim:        #3a3a50;
+
+    --accent:     #ff4713;
+    --accent-lo:  rgba(255,71,19,.12);
+    --green:      #00e87a;
+    --green-lo:   rgba(0,232,122,.1);
+    --red:        #ff2d2d;
+    --red-lo:     rgba(255,45,45,.1);
+    --yellow:     #ffb400;
+    --yellow-lo:  rgba(255,180,0,.1);
+
+    --mono:       'IBM Plex Mono', monospace;
+    --display:    'Rajdhani', sans-serif;
+
+    --stripe-h:   3px;
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Body / background ─────────────────────────────────────── */
+body {
+    font-family: var(--display);
+    background-color: var(--bg);
+    background-image:
+        radial-gradient(circle at 1px 1px, rgba(255,255,255,.018) 1px, transparent 0);
+    background-size: 28px 28px;
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Racing stripe at very top */
+body::before {
+    content: '';
+    display: block;
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: var(--stripe-h);
+    background: linear-gradient(90deg, var(--accent) 0%, #ff8c00 60%, var(--accent) 100%);
+    z-index: 200;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+header {
+    position: sticky;
+    top: var(--stripe-h);
+    z-index: 100;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    height: 52px;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.logo-flag {
+    font-size: 1rem;
+    color: var(--accent);
+    line-height: 1;
+}
+
+.logo-text {
+    font-family: var(--display);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text);
+}
+
+.logo-text em {
+    font-style: normal;
+    color: var(--accent);
+}
+
+.header-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--border-hi);
+}
+
+header nav {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+}
+
+header nav a {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 0.3rem 0.85rem;
+    border: 1px solid transparent;
+    transition: color .15s, border-color .15s, background .15s;
+}
+
+header nav a:hover {
+    color: var(--text);
+    border-color: var(--border-hi);
+    background: var(--surface-2);
+}
+
+/* ── Main ──────────────────────────────────────────────────── */
+main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* ── Page title area ───────────────────────────────────────── */
+.page-header {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+h2 {
+    font-family: var(--display);
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.15;
+}
+
+h2 .hl { color: var(--accent); }
+
+.page-id {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+}
+
+/* ── Stat row (KPI boxes) ──────────────────────────────────── */
+.stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    margin-bottom: 1.5rem;
+    background: var(--border);
+    border: 1px solid var(--border);
+}
+
+.stat-box {
+    background: var(--surface);
+    padding: 1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Bottom accent bar */
+.stat-box::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--border-hi);
+    transition: background .2s;
+}
+
+.stat-box:first-child::after { background: var(--accent); opacity: .5; }
+
+.stat-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+}
+
+.stat-value {
+    font-family: var(--mono);
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.stat-value.lg { font-size: 2.2rem; }
+.stat-value.delta-pos { color: var(--red); }
+.stat-value.delta-neg { color: var(--green); }
+
+.stat-unit {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-left: 0.15em;
+}
+
+/* ── Cards (HUD corner-bracket style) ─────────────────────── */
+.card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+/* Top-left corner bracket */
+.card::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 14px; height: 14px;
+    border-top: 2px solid var(--accent);
+    border-left: 2px solid var(--accent);
+}
+
+/* Bottom-right corner bracket */
+.card::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 14px; height: 14px;
+    border-bottom: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+}
+
+/* Card section label */
+.card-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.card-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+/* ── Grid ──────────────────────────────────────────────────── */
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+/* ── Canvas ────────────────────────────────────────────────── */
+canvas {
+    display: block;
+    width: 100% !important;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+}
+
+/* ── Summary box ───────────────────────────────────────────── */
+.summary-box {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    line-height: 1.8;
+    color: var(--text);
+    background: var(--accent-lo);
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem;
+    white-space: pre-wrap;
+}
+
+/* ── Improvement items ─────────────────────────────────────── */
+.improvement-list { display: flex; flex-direction: column; gap: 0; }
+
+.improvement-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.improvement-item:last-child { border-bottom: none; }
+
+.imp-corner {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    padding-top: 0.15rem;
+    min-width: 44px;
+    white-space: nowrap;
+}
+
+.imp-badge {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid currentColor;
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+}
+
+.imp-text {
+    font-family: var(--display);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text);
+    flex: 1;
+}
+
+/* ── Severity ──────────────────────────────────────────────── */
+.severity-high   { color: var(--red);    }
+.severity-medium { color: var(--yellow); }
+.severity-low    { color: var(--green);  }
+
+/* ── Tables ────────────────────────────────────────────────── */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+}
+
+thead tr {
+    border-bottom: 1px solid var(--border-hi);
+}
+
+th {
+    font-family: var(--display);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+
+th.r, td.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    transition: background .1s;
+}
+
+tr:last-child td { border-bottom: none; }
+
+tbody tr:hover td { background: var(--surface-2); }
+
+td .pill {
+    display: inline-block;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    padding: 0.1rem 0.4rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border-hi);
+    color: var(--muted);
+}
+
+/* ── Filter form ───────────────────────────────────────────── */
+.filter-form {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.filter-form::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 12px; height: 12px;
+    border-top: 2px solid var(--accent);
+    border-left: 2px solid var(--accent);
+}
+
+.filter-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.filter-form input[type="date"],
+.filter-form input[type="text"] {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    background: var(--bg);
+    border: 1px solid var(--border-hi);
+    color: var(--text);
+    padding: 0.4rem 0.65rem;
+    outline: none;
+    transition: border-color .15s;
+    min-width: 120px;
+}
+
+.filter-form input:focus {
+    border-color: var(--accent);
+}
+
+.filter-form button {
+    font-family: var(--display);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.48rem 1.25rem;
+    cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
+    transition: opacity .15s;
+    align-self: flex-end;
+}
+
+.filter-form button:hover { opacity: .85; }
+
+/* ── Empty state ───────────────────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+}
+
+.empty-state .empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: .4;
+}
+
+.empty-state p {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    line-height: 1.7;
+}
+
+/* ── Links ─────────────────────────────────────────────────── */
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-hi); }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 800px) {
+    main { padding: 1rem; }
+    header { padding: 0 1rem; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .page-header { flex-direction: column; align-items: flex-start; }
+    h2 { font-size: 1.4rem; }
+}

@@ -61,6 +61,22 @@ CREATE TABLE IF NOT EXISTS positions (
 
 CREATE INDEX IF NOT EXISTS idx_positions_session_lap
     ON positions (session_idx, lap_number);
+
+CREATE TABLE IF NOT EXISTS analyses (
+    id             INTEGER PRIMARY KEY,
+    session_id     TEXT    NOT NULL,
+    lap_number     INTEGER NOT NULL,
+    ref_lap        INTEGER NOT NULL,
+    track          TEXT    NOT NULL,
+    car            TEXT    NOT NULL,
+    track_length_m REAL    NOT NULL DEFAULT 4000.0,
+    created_at     TEXT    NOT NULL
+                   DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    report_json    TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_analyses_track_car
+    ON analyses (track, car);
 """
 
 _INSERT_SESSION = "INSERT OR IGNORE INTO sessions (session_id) VALUES (?)"
@@ -210,6 +226,56 @@ class TelemetryStorage:
             d["lap_dist_pct"] = d["lap_dist_pct"] / _SCALE
             result.append(d)
         return result
+
+    def save_analysis(
+        self,
+        session_id: str,
+        lap_number: int,
+        ref_lap: int,
+        track: str,
+        car: str,
+        track_length_m: float,
+        report_json: str,
+    ) -> int:
+        """Persist an analysis result and return the new row id."""
+        self._flush()
+        cursor = self._conn.execute(
+            """
+            INSERT INTO analyses
+                (session_id, lap_number, ref_lap, track, car, track_length_m, report_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (session_id, lap_number, ref_lap, track, car, track_length_m, report_json),
+        )
+        self._conn.commit()
+        return cursor.lastrowid  # type: ignore[return-value]
+
+    def get_analysis(self, analysis_id: int) -> dict | None:
+        """Return a single analysis row as a dict, or None if not found."""
+        self._flush()
+        row = self._conn.execute(
+            "SELECT * FROM analyses WHERE id = ?", (analysis_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_analyses(self, track: str, car: str) -> list[dict]:
+        """Return all analyses for *track* + *car*, newest first.
+
+        Each dict includes a ``total_delta_s`` key extracted from ``report_json``.
+        """
+        self._flush()
+        rows = self._conn.execute(
+            """
+            SELECT id, session_id, lap_number, ref_lap, track, car,
+                   track_length_m, created_at, report_json,
+                   json_extract(report_json, '$.total_delta_s') AS total_delta_s
+            FROM   analyses
+            WHERE  track = ? AND car = ?
+            ORDER  BY created_at DESC, id DESC
+            """,
+            (track, car),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def close(self) -> None:
         """Flush buffered writes and close the database connection."""

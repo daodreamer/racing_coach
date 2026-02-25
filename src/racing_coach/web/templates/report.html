@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}LAP {{ report.lap_number }} — {{ report.track }}{% endblock %}
+
+{% block content %}
+{% set d = report.total_delta_s %}
+{% set delta_class = 'delta-pos' if d > 0 else ('delta-neg' if d < 0 else '') %}
+{% set delta_sign  = '+' if d >= 0 else '' %}
+
+<!-- Page header -->
+<div class="page-header">
+    <div>
+        <h2><span class="hl">{{ report.track }}</span> / {{ report.car }}</h2>
+        <span class="page-id">ANALYSIS #{{ analysis_id }} &nbsp;·&nbsp; LAP {{ report.lap_number }}</span>
+    </div>
+</div>
+
+<!-- KPI stat boxes -->
+<div class="stat-row">
+    <div class="stat-box">
+        <div class="stat-label">Total Delta</div>
+        <div class="stat-value lg {{ delta_class }}">
+            {{ delta_sign }}{{ "%.3f"|format(d) }}<span class="stat-unit">s</span>
+        </div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Corners</div>
+        <div class="stat-value">{{ report.corners | length }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Lap</div>
+        <div class="stat-value">{{ report.lap_number }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Car</div>
+        <div class="stat-value" style="font-size:1rem;padding-top:.35rem;font-family:var(--display);letter-spacing:.04em;text-transform:uppercase;">
+            {{ report.car }}
+        </div>
+    </div>
+</div>
+
+<!-- Track map + Delta chart -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-label">Track Map</div>
+        <canvas id="trackMap" height="280"></canvas>
+    </div>
+    <div class="card">
+        <div class="card-label">Corner Delta (s)</div>
+        <canvas id="deltaChart" height="280"></canvas>
+    </div>
+</div>
+
+<!-- Coach Summary -->
+{% if report.summary %}
+<div class="card">
+    <div class="card-label">Coach Analysis</div>
+    <div class="summary-box">{{ report.summary }}</div>
+</div>
+{% endif %}
+
+<!-- Top Improvements -->
+{% if report.top_improvements %}
+<div class="card">
+    <div class="card-label">Priority Improvements</div>
+    <div class="improvement-list">
+    {% for s in report.top_improvements %}
+        <div class="improvement-item">
+            <span class="imp-corner">C{{ s.corner_id }}</span>
+            <span class="imp-badge severity-{{ s.severity }}">{{ s.severity }}</span>
+            <span class="imp-text">{{ s.suggestion }}</span>
+        </div>
+    {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Corner details table -->
+<div class="card">
+    <div class="card-label">Corner Breakdown</div>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th class="r">Entry&thinsp;Δ</th>
+                <th class="r">Apex&thinsp;Δ</th>
+                <th class="r">Exit&thinsp;Δ</th>
+                <th class="r">Corner&thinsp;Δ</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for c in report.corners %}
+        {% set sev = 'high' if c.delta_total > 0.3 else ('medium' if c.delta_total > 0.1 else 'low') %}
+        {% set sign_e = '+' if c.delta_entry >= 0 else '' %}
+        {% set sign_a = '+' if c.delta_apex  >= 0 else '' %}
+        {% set sign_x = '+' if c.delta_exit  >= 0 else '' %}
+        {% set sign_t = '+' if c.delta_total >= 0 else '' %}
+            <tr>
+                <td><span class="pill">C{{ c.corner_id }}</span></td>
+                <td class="r">{{ sign_e }}{{ "%.3f"|format(c.delta_entry) }}s</td>
+                <td class="r">{{ sign_a }}{{ "%.3f"|format(c.delta_apex) }}s</td>
+                <td class="r">{{ sign_x }}{{ "%.3f"|format(c.delta_exit) }}s</td>
+                <td class="r severity-{{ sev }}">{{ sign_t }}{{ "%.3f"|format(c.delta_total) }}s</td>
+                <td><span class="imp-badge severity-{{ sev }}">{{ sev }}</span></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+// ── Track map ──────────────────────────────────────────────────────────────
+(function() {
+    const positions = {{ positions_json | safe }};
+    const corners   = {{ corners_json   | safe }};
+    const canvas    = document.getElementById('trackMap');
+    const ctx       = canvas.getContext('2d');
+
+    canvas.width  = canvas.parentElement.clientWidth - 48;
+    canvas.height = 280;
+
+    // Background
+    ctx.fillStyle = '#0c0c11';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!positions.length) {
+        ctx.fillStyle = '#3a3a50';
+        ctx.font = "12px 'IBM Plex Mono'";
+        ctx.fillText('NO POSITION DATA', canvas.width / 2 - 72, canvas.height / 2);
+        return;
+    }
+
+    const xs = positions.map(p => p.x);
+    const ys = positions.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+
+    const pad   = 24;
+    const W     = canvas.width  - pad * 2;
+    const H     = canvas.height - pad * 2;
+    const scale = Math.min(W / rangeX, H / rangeY);
+    const offX  = pad + (W - rangeX * scale) / 2;
+    const offY  = pad + (H - rangeY * scale) / 2;
+
+    function toC(x, y) {
+        return [offX + (maxX - x) * scale, offY + (maxY - y) * scale];
+    }
+
+    // Draw track as open polyline (no closePath — avoids false straight line
+    // across the start/finish gap).
+    function drawTrack(color, width) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth   = width;
+        ctx.lineCap     = 'round';
+        ctx.lineJoin    = 'round';
+        ctx.beginPath();
+        const [x0, y0] = toC(positions[0].x, positions[0].y);
+        ctx.moveTo(x0, y0);
+        for (let i = 1; i < positions.length; i++) {
+            // If two consecutive points are far apart in pct space, it is the
+            // start/finish wrap-around; lift the pen instead of drawing a line.
+            if (positions[i].pct - positions[i - 1].pct > 0.05) {
+                const [nx, ny] = toC(positions[i].x, positions[i].y);
+                ctx.moveTo(nx, ny);
+            } else {
+                const [px, py] = toC(positions[i].x, positions[i].y);
+                ctx.lineTo(px, py);
+            }
+        }
+        ctx.stroke();
+    }
+
+    drawTrack('#0f0f18', 8);   // shadow
+    drawTrack('#2a2a3a', 3);   // outline
+
+    // Colour segments by corner delta
+    function pctToIdx(pct) {
+        let best = 0, bestD = Infinity;
+        for (let i = 0; i < positions.length; i++) {
+            const d = Math.abs(positions[i].pct - pct);
+            if (d < bestD) { bestD = d; best = i; }
+        }
+        return best;
+    }
+
+    corners.forEach(c => {
+        const delta = c.delta_total;
+        const color = delta > 0.3 ? '#ff2d2d' : (delta > 0.1 ? '#ffb400' : '#00e87a');
+        const si = pctToIdx(c.entry_pct);
+        const ei = pctToIdx(c.exit_pct);
+        if (si >= ei) return;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 5;
+        ctx.shadowColor = color;
+        ctx.shadowBlur  = 6;
+        ctx.beginPath();
+        const [bx, by] = toC(positions[si].x, positions[si].y);
+        ctx.moveTo(bx, by);
+        for (let i = si + 1; i <= ei; i++) {
+            const [px, py] = toC(positions[i].x, positions[i].y);
+            ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    });
+
+    // Corner labels
+    ctx.font = "bold 9px 'IBM Plex Mono'";
+    corners.forEach(c => {
+        const delta = c.delta_total;
+        const color = delta > 0.3 ? '#ff2d2d' : (delta > 0.1 ? '#ffb400' : '#00e87a');
+        const mi = pctToIdx((c.entry_pct + c.exit_pct) / 2);
+        const [lx, ly] = toC(positions[mi].x, positions[mi].y);
+        ctx.fillStyle = color;
+        ctx.fillText('C' + c.corner_id, lx + 5, ly - 5);
+    });
+})();
+
+// ── Delta bar chart ────────────────────────────────────────────────────────
+(function() {
+    const corners = {{ corners_json | safe }};
+    const labels  = corners.map(c => 'C' + c.corner_id);
+    const data    = corners.map(c => +c.delta_total.toFixed(3));
+    const colors  = data.map(d => d > 0.3 ? '#ff2d2d' : (d > 0.1 ? '#ffb400' : '#00e87a'));
+    const glow    = data.map(d => d > 0.3 ? 'rgba(255,45,45,.15)' : (d > 0.1 ? 'rgba(255,180,0,.12)' : 'rgba(0,232,122,.12)'));
+
+    new Chart(document.getElementById('deltaChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                backgroundColor: glow,
+                borderColor:     colors,
+                borderWidth: 1,
+                borderRadius: 2,
+            }]
+        },
+        options: {
+            animation: { duration: 600, easing: 'easeOutQuart' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#111118',
+                    borderColor: '#2c2c3c',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => {
+                            const v = ctx.raw;
+                            return `  Δ ${v >= 0 ? '+' : ''}${v.toFixed(3)}s`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#5c5c74' },
+                    grid:  { color: '#1c1c28' },
+                    border:{ color: '#1c1c28' }
+                },
+                y: {
+                    ticks: {
+                        color: '#5c5c74',
+                        callback: v => (v >= 0 ? '+' : '') + v.toFixed(2) + 's'
+                    },
+                    grid:  { color: '#1c1c28' },
+                    border:{ color: '#1c1c28' }
+                }
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}

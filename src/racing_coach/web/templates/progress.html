@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Progress{% if track %} — {{ track }}{% endif %}{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="page-header">
+    <div>
+        <h2>
+            {% if track %}<span class="hl">{{ track }}</span> / {{ car }}
+            {% else %}<span class="hl">Progress</span>{% endif %}
+        </h2>
+        {% if laps %}
+        <span class="page-id">{{ laps | length }} SESSION{{ 's' if laps | length != 1 }}</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filter form -->
+<form class="filter-form" method="GET" action="/progress">
+    <label>
+        Track
+        <input type="text" name="track" value="{{ track }}" placeholder="e.g. monza">
+    </label>
+    <label>
+        Car
+        <input type="text" name="car" value="{{ car }}" placeholder="e.g. ferrari_296gt3">
+    </label>
+    <label>
+        From
+        <input type="date" name="date_from" value="{{ date_from or '' }}">
+    </label>
+    <label>
+        To
+        <input type="date" name="date_to" value="{{ date_to or '' }}">
+    </label>
+    <button type="submit">&#9654;&nbsp; FILTER</button>
+</form>
+
+{% if laps %}
+
+<!-- KPI row: show best/latest delta -->
+{% set best = laps | sort(attribute='total_delta_s') | first %}
+<div class="stat-row">
+    <div class="stat-box">
+        <div class="stat-label">Sessions Analysed</div>
+        <div class="stat-value">{{ laps | length }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Best Delta</div>
+        <div class="stat-value {% if best.total_delta_s < 0 %}delta-neg{% else %}delta-pos{% endif %}">
+            {{ '+' if best.total_delta_s >= 0 else '' }}{{ "%.3f"|format(best.total_delta_s) }}<span class="stat-unit">s</span>
+        </div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Latest Delta</div>
+        {% set latest = laps[0] %}
+        <div class="stat-value {% if latest.total_delta_s < 0 %}delta-neg{% else %}delta-pos{% endif %}">
+            {{ '+' if latest.total_delta_s >= 0 else '' }}{{ "%.3f"|format(latest.total_delta_s) }}<span class="stat-unit">s</span>
+        </div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Latest Lap</div>
+        <div class="stat-value">{{ latest.lap_number }}</div>
+    </div>
+</div>
+
+<!-- Trend chart -->
+<div class="card">
+    <div class="card-label">Delta Trend</div>
+    <canvas id="trendChart" height="240"></canvas>
+</div>
+
+<!-- History table -->
+<div class="card">
+    <div class="card-label">Session History</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th class="r">Lap</th>
+                <th class="r">Total&thinsp;Δ</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for lap in laps %}
+        {% set sev = 'high' if lap.total_delta_s > 0.3 else ('medium' if lap.total_delta_s > 0.1 else 'low') %}
+        {% set sign = '+' if lap.total_delta_s >= 0 else '' %}
+            <tr>
+                <td style="font-family:var(--mono);font-size:.78rem;color:var(--muted);">
+                    {{ lap.created_at[:10] }}
+                    <span style="opacity:.5;">{{ lap.created_at[11:16] }}</span>
+                </td>
+                <td class="r"><span class="pill">L{{ lap.lap_number }}</span></td>
+                <td class="r severity-{{ sev }}">{{ sign }}{{ "%.3f"|format(lap.total_delta_s) }}s</td>
+                <td style="text-align:right;">
+                    <a href="/report/{{ lap.id }}" style="font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;">
+                        VIEW &#8599;
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+(function() {
+    const laps   = {{ laps_json | safe }};
+    // Reverse so chart reads left→right = oldest→newest
+    const sorted = [...laps].reverse();
+    const labels = sorted.map(l => l.created_at.substring(0,10) + ' L' + l.lap_number);
+    const data   = sorted.map(l => +l.total_delta_s.toFixed(3));
+    const ptColors = data.map(d => d > 0.3 ? '#ff2d2d' : (d > 0.1 ? '#ffb400' : '#00e87a'));
+
+    new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                borderColor:     '#ff4713',
+                backgroundColor: 'rgba(255,71,19,.06)',
+                borderWidth: 2,
+                tension: 0.35,
+                fill: true,
+                pointBackgroundColor: ptColors,
+                pointBorderColor:     ptColors,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+            }]
+        },
+        options: {
+            animation: { duration: 700, easing: 'easeOutQuart' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#111118',
+                    borderColor: '#2c2c3c',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => {
+                            const v = ctx.raw;
+                            return `  Δ ${v >= 0 ? '+' : ''}${v.toFixed(3)}s`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#5c5c74', maxRotation: 30 },
+                    grid:  { color: '#1c1c28' },
+                    border:{ color: '#1c1c28' }
+                },
+                y: {
+                    ticks: {
+                        color: '#5c5c74',
+                        callback: v => (v >= 0 ? '+' : '') + v.toFixed(2) + 's'
+                    },
+                    grid:  { color: '#1c1c28' },
+                    border:{ color: '#1c1c28' }
+                }
+            }
+        }
+    });
+})();
+</script>
+
+{% else %}
+
+<div class="empty-state">
+    <div class="empty-icon">&#9651;</div>
+    <p>
+        No analysis data found.<br>
+        Enter a track and car above, or run <code>POST /api/analyze</code> first.
+    </p>
+</div>
+
+{% endif %}
+{% endblock %}
